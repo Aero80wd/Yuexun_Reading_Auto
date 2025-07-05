@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="page_header">
+  <h1>请先登陆您的账号</h1>
+</div>
+<div class="page_content">
+{{ quick_form(form) }}
+  提示：请先接受所有需要自动答题的任务
+</div>
+{% endblock %}
