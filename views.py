@@ -6,7 +6,7 @@ import requests
 import threading
 from ai_ans import *
 from queue import Queue
-logs = Queue()
+log_session = {}
 
 SM_KEY = bytes.fromhex("918ba21cd1253de294b35394c58ad576")
 main = Blueprint('main',__name__)
@@ -35,9 +35,11 @@ def login():
         requests.post("https://www.yuexunedu.com/store/api/v1.0/selectFamilyStudent.json",
                       data={"sessionUuid": login_req.json()["datas"][0]["sessionUuid"],
                             "familyStudentId": family_inf["datas"][0]["familyStudentId"]})
+        log_session[login_req.json()["datas"][0]["sessionUuid"]] = Queue()
         return redirect(url_for('main.books',sessionUuid=login_req.json()["datas"][0]["sessionUuid"]))
     return render_template('login.html',form=form)
 def startBookProcess(sessionUuid):
+    logs = log_session[sessionUuid]
     tasks = requests.post("https://www.yuexunedu.com/store/api/v1.0/inquireReadingStudentTaskListAccount.json",
                           data={"sessionUuid": sessionUuid}).json()
     print({"sessionUuid": sessionUuid})
@@ -48,16 +50,19 @@ def startBookProcess(sessionUuid):
     for task in tasks:
         if task["acceptTask"]:
             for book in task["bookList"]:
-                book_book = Book(book["bookId"],sessionUuid)
+                book_book = Book(book["bookId"], sessionUuid)
+                logs.put("开始答题：%s" % book_book.bookInfo.bookName)
                 if not book_book.canTest:
                     logs.put("未到考试时间！")
                     continue
-                logs.put("开始答题：%s"%book_book.bookInfo.bookName)
                 for status in book_book.processProblems():
+                    logs.put("回答问题：%s" % status["problem"])
                     logs.put("答题成功！" if status else "答题失败！")
+                    logs.put("选择选项：%s"%status["trueAnswer"])
                 logs.put("%s答题完成！" % book_book.bookInfo.bookName)
 
     logs.put("所有书籍答题完成！")
+    logs.put("###LOG_SUCCESS###")
 @main.route("/books",methods=['GET','POST'])
 def books():
     thread =  threading.Thread(target=startBookProcess,args=(request.args.get("sessionUuid"),))
@@ -66,6 +71,7 @@ def books():
 
 
     return render_template("books.html")
-@main.route("/get_front_log")
-def get_front_log():
+@main.route("/get_front_log/<sessionUuid>")
+def get_front_log(sessionUuid):
+    logs = log_session[sessionUuid]
     return jsonify(logs=logs.get() if not logs.empty() else "###UNDEFINED###")

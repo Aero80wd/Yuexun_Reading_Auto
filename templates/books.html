@@ -27,14 +27,19 @@
 {{ super() }}
 <script>
   const logBox = document.getElementById("logBox");
-
+    const params = new URLSearchParams(window.location.search);
+    let timer;
     function fetchLog() {
-        fetch("/get_front_log")
+
+        fetch("/get_front_log/" + params.get("sessionUuid"))
             .then(response => response.json())
             .then(data => {
-                if (data.logs !== "###UNDEFINED###") {
+                if (data.logs !== "###UNDEFINED###" && data.logs !== "###LOG_SUCCESS###") {
                     logBox.value += data.logs + "\n";
                     logBox.scrollTop = logBox.scrollHeight; // 自动滚动到底部
+                }
+                if (data.logs === "###LOG_SUCCESS###") {
+                    clearInterval(timer);
                 }
             })
             .catch(err => {
@@ -43,6 +48,6 @@
     }
 
     // 每秒轮询一次日志
-    setInterval(fetchLog, 50);
+    timer = setInterval(fetchLog, 50);
 </script>
 {% endblock %}

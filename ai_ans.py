@@ -89,6 +89,6 @@ class Book:
                                                                                                                                "topicOptionId":ans})
             if judge_req.json()["status"] != "200":
                 yield False
-            yield True
+            yield {"status": judge_req.json()["status"],"problem":problem_string,"trueAnswer":ans}
 
     
